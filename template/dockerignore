@@ -1,0 +1,40 @@
+# Rebuilt inside the image
+node_modules
+dist
+.output
+.tanstack
+.nitro
+.vinxi
+
+# Secrets and local env: real values come from the container env at runtime
+.env
+.env.*
+!.env.example
+.infisical.json
+
+# VCS, editors, OS. .gitignore stays: Tailwind v4 reads it to decide what to
+# scan, so without it the image's CSS differs from a local build.
+.git
+.DS_Store
+.idea
+.vscode
+
+# Agent and tooling files
+.agents
+.claude
+.firecrawl
+.playwright-cli
+.cta.json
+skills-lock.json
+tmp
+
+# Not needed to build or run
+docs
+context
+*.just
+justfile
+README.md
+AGENTS.md
+CLAUDE.md
+Dockerfile
+.dockerignore

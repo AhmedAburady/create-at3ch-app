@@ -1,0 +1,43 @@
+# Run `just` to see every recipe, modules included.
+
+# Docker commands
+mod docker
+
+# List every recipe, submodules included.
+default:
+    @just --list --list-submodules
+
+# Install dependencies.
+install:
+    bun install
+
+# Run the dev server on :3000.
+dev:
+    bun run dev
+
+# Build for production into dist/.
+build:
+    bun run build
+
+# Serve the production build with the Bun server.
+start: build
+    bun run start
+
+# Lint and format-check with Biome, then typecheck.
+check:
+    bun run check
+    bun run typecheck
+
+# Checking with fixing
+fix:
+    bun run fix
+    bun run typecheck
+
+# Update every package to its latest version.
+update:
+    bun update --latest
+
+# Generate a commit message
+[arg("stat", long="stat", value="yes")]
+msg stat="no":
+    @git --no-pager diff --staged {{ if stat == "yes" { "--stat" } else { "" } }} | fabric -sp commit_msg
