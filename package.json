@@ -1,6 +1,6 @@
 {
   "name": "create-at3ch-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Start a TanStack Start app on Bun with Biome, shadcn (BaseUI), TanStack Query and the React Compiler: bun create at3ch-app@latest my-app",
   "license": "MIT",
   "type": "module",
