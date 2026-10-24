@@ -29,6 +29,8 @@ skills-lock.json
 tmp
 
 # Not needed to build or run
+tests
+src/**/*.test.ts
 docs
 context
 *.just
