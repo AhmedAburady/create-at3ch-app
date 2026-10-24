@@ -23,16 +23,21 @@ build:
 start: build
     bun run start
 
-# Lint and format-check with Biome, then typecheck.
+# Format-check, lint and typecheck with Vite+.
 check:
     bun run check
-    bun run typecheck
 
-# Checking with fixing
+# Format and fix what Vite+ can, then lint and typecheck.
 fix:
     bun run fix
-    bun run typecheck
 
-# Update every package to its latest version.
+# Test: unit tests and the production build over HTTP.
+test:
+    bun run test
+
+# Update every package to its latest version, then point the Vite+
+# overrides at the versions it now bundles.
 update:
     bun update --latest
+    bun pm pkg set overrides.vite="$(bun -p 'require("./package.json").devDependencies.vite')" overrides.vitest="$(bun -p 'require("./node_modules/vite-plus/package.json").dependencies.vitest')"
+    bun install

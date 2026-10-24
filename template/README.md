@@ -1,11 +1,12 @@
 # __APP_NAME__
 
-TanStack Start on Bun: Biome, Tailwind v4, shadcn (BaseUI), TanStack Query, React Compiler, light/dark/system theme.
+TanStack Start on Bun: Vite+ (Oxlint, Oxfmt), Tailwind v4, shadcn (BaseUI), TanStack Query, React Compiler, light/dark/system theme.
 
 ```sh
 bun run dev         # http://localhost:3000
-just check          # biome + tsc
-just fix            # biome --write + tsc
+just check          # vp check: format, lint, typecheck
+just fix            # vp check --fix
+just test           # vp test: unit tests and the production build over HTTP
 just docker load    # build the image locally
 just docker push    # build for amd64 and push (IMAGE=registry/path)
 ```
