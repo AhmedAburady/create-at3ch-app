@@ -9,7 +9,8 @@
   },
   "files": [
     "index.js",
-    "template"
+    "template",
+    "variants"
   ],
   "repository": {
     "type": "git",

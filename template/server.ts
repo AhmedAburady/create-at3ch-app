@@ -12,8 +12,19 @@ const PORT = Number(process.env.PORT ?? 3000);
 const CLIENT_DIR = resolve(import.meta.dir, "dist/client");
 const SERVER_ENTRY = "./dist/server/server.js";
 
+/** What the server passes to Start with each request it hands over. */
+export type RequestContext = {
+  /** The address of the connection the request came in on. */
+  clientIp?: string;
+};
+
 const app = (await import(SERVER_ENTRY)) as {
-  default: { fetch: (request: Request) => Response | Promise<Response> };
+  default: {
+    fetch: (
+      request: Request,
+      opts: { context: RequestContext },
+    ) => Response | Promise<Response>;
+  };
 };
 
 /**
@@ -44,7 +55,7 @@ function assetFor(
 const server = Bun.serve({
   port: PORT,
   idleTimeout: 60,
-  async fetch(request) {
+  async fetch(request, bun) {
     const { pathname } = new URL(request.url);
 
     if (request.method === "GET" || request.method === "HEAD") {
@@ -64,7 +75,11 @@ const server = Bun.serve({
       }
     }
 
-    return app.default.fetch(request);
+    // Only Bun knows the connection's address, so it goes to Start's request
+    // context, where middleware can read it (a rate limit, say).
+    return app.default.fetch(request, {
+      context: { clientIp: bun.requestIP(request)?.address },
+    });
   },
   error(error) {
     console.error("server:", error);
