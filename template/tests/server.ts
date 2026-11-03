@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { TEST_ENV } from "./env";
+
 /**
  * Runs the production build the way the image does, `bun run server.ts`,
  * and calls it the way a browser does.
@@ -38,13 +40,14 @@ export type Server = {
 };
 
 /**
- * Starts the built server with only the given settings. It runs from an
- * empty directory so Bun loads no .env file, and inherits nothing but PATH.
- * It takes a port the system picks and says which, so no other process can
+ * Starts the built server with only the given settings, the app's test
+ * settings (tests/env.ts) unless others are given. It runs from an empty
+ * directory so Bun loads no .env file, and inherits nothing but PATH. It
+ * takes a port the system picks and says which, so no other process can
  * take it first.
  */
 export async function startServer(
-  env: Record<string, string> = {},
+  env: Record<string, string> = TEST_ENV,
 ): Promise<Server> {
   const cwd = await mkdtemp(join(tmpdir(), "app-http-"));
   const child = spawn("bun", ["run", join(APP_DIR, "server.ts")], {
@@ -86,6 +89,9 @@ export async function startServer(
 }
 
 /** Fetches a page or asset without following redirects. */
-export function get(url: string, path: string) {
-  return fetch(`${url}${path}`, { redirect: "manual" });
+export function get(url: string, path: string, cookie?: string) {
+  return fetch(`${url}${path}`, {
+    redirect: "manual",
+    headers: cookie ? { cookie } : {},
+  });
 }

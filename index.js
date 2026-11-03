@@ -1,12 +1,25 @@
 #!/usr/bin/env bun
-// bun create at3ch-app@latest [my-app]
+// bun create at3ch-app@latest [my-app] [--protected]
 // Copies the template, names it, installs it and starts a git repository
-// unless it is already inside one.
+// unless it is already inside one. --protected lays the protected variant
+// over the template: one shared access code in front of the whole app.
+import { randomBytes } from "node:crypto";
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { cp, readFile, rename, writeFile } from "node:fs/promises";
-import { basename, join, relative, resolve } from "node:path";
+import {
+  appendFile,
+  cp,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
+import { basename, dirname, join, relative, resolve } from "node:path";
 
 const TEMPLATE = join(import.meta.dir, "template");
+const VARIANTS = join(import.meta.dir, "variants");
 
 function fail(message) {
   console.error(`\n✗ ${message}`);
@@ -21,12 +34,25 @@ function slug(text) {
     .replace(/^-+|-+$/g, "");
 }
 
-const usage = "Give the app a name: bun create at3ch-app@latest my-app";
+const usage = `Give the app a name: bun create at3ch-app@latest my-app
+
+  --protected   put one shared access code in front of the whole app`;
+
+const argv = process.argv.slice(2);
+const flags = new Set(argv.filter((arg) => arg.startsWith("-")));
+if (flags.has("--help") || flags.has("-h")) {
+  console.log(`\n${usage}\n`);
+  process.exit(0);
+}
+// A flag is not a name, and would otherwise become a folder called --help.
+for (const flag of flags)
+  if (flag !== "--protected") fail(`Unknown option ${flag}.\n\n${usage}`);
+const variant = flags.has("--protected") ? "protected" : null;
+
 const target =
-  process.argv[2] ??
+  argv.find((arg) => !arg.startsWith("-")) ??
   (process.stdin.isTTY ? prompt("App name:", "my-app") : null) ??
   fail(usage);
-// A flag is not a name, and would otherwise become a folder called --help.
 if (target.startsWith("-")) fail(usage);
 
 const dest = resolve(target);
@@ -52,21 +78,69 @@ if (existsSync(dest)) {
   if (readdirSync(dest).length > 0) fail(`${dest} is not empty.`);
 }
 
-console.log(`\nCreating ${name} in ${dest}`);
+console.log(`\nCreating ${name}${variant ? ` (${variant})` : ""} in ${dest}`);
 await cp(TEMPLATE, dest, { recursive: true }).catch((error) =>
   fail(`Could not write ${dest}: ${error.message}`),
 );
+
+// A variant is the template plus a layer: variants/<name>/files is copied
+// over it, each file in variants/<name>/append is added to the end of the
+// app's file of the same name, and variant.json says which template files go
+// and which packages come.
+if (variant) {
+  const dir = join(VARIANTS, variant);
+  const spec = JSON.parse(await readFile(join(dir, "variant.json"), "utf8"));
+  await cp(join(dir, "files"), dest, { recursive: true });
+  for (const file of spec.remove ?? []) await rm(join(dest, file));
+  const appendDir = join(dir, "append");
+  for (const file of await readdir(appendDir, { recursive: true })) {
+    const from = join(appendDir, file);
+    if (statSync(from).isFile())
+      await appendFile(join(dest, file), `\n${await readFile(from, "utf8")}`);
+  }
+
+  // Kept in name order, as vp fmt keeps them.
+  const manifestPath = join(dest, "package.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  for (const field of ["dependencies", "devDependencies"]) {
+    const merged = { ...manifest[field], ...spec[field] };
+    manifest[field] = Object.fromEntries(
+      Object.keys(merged)
+        .sort()
+        .map((key) => [key, merged[key]]),
+    );
+  }
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
 // npm drops .gitignore from packages, so the template ships it as gitignore;
-// .dockerignore travels the same way to be safe.
-await rename(join(dest, "gitignore"), join(dest, ".gitignore"));
-await rename(join(dest, "dockerignore"), join(dest, ".dockerignore"));
+// .dockerignore and .env.example travel the same way to be safe.
+for (const file of ["gitignore", "dockerignore", "env.example"]) {
+  const path = join(dest, file);
+  if (existsSync(path)) await rename(path, join(dest, `.${file}`));
+}
 
 // The app reads its name from package.json, so no source file carries it.
-for (const file of ["package.json", "README.md", "docker.just"]) {
+for (const file of ["package.json", "README.md", "AGENTS.md", "docker.just"]) {
   const path = join(dest, file);
   const text = await readFile(path, "utf8");
   await writeFile(path, text.replaceAll("__APP_NAME__", name));
 }
+
+// Agents read AGENTS.md and .agents/skills, Claude Code reads CLAUDE.md and
+// .claude/skills: links, so each has one copy. npm does not pack links, so
+// they are made here, and copied where links cannot be made (Windows
+// without the right to create them).
+async function link(target, path) {
+  try {
+    await symlink(target, path);
+  } catch {
+    await cp(resolve(dirname(path), target), path, { recursive: true });
+  }
+}
+await mkdir(join(dest, ".claude"), { recursive: true });
+await link("../.agents/skills", join(dest, ".claude", "skills"));
+await link("AGENTS.md", join(dest, "CLAUDE.md"));
 
 // Async, so a missing command rejects rather than throws.
 const run = async (command, output = "inherit") =>
@@ -75,6 +149,22 @@ const run = async (command, output = "inherit") =>
 console.log("\nInstalling dependencies");
 if ((await run(["bun", "install"])) !== 0) {
   fail(`bun install failed. Fix the cause, then run bun install in ${dest}.`);
+}
+
+// Settings to run the protected app locally, in .env.local, which git
+// ignores and Bun loads. Production sets its own. Written after the install,
+// which has no use for them.
+let accessNote = "";
+if (variant === "protected") {
+  const code = randomBytes(6).toString("base64url");
+  await writeFile(
+    join(dest, ".env.local"),
+    `# Local settings only; see .env.example. Git ignores this file.
+ACCESS_CODE=${code}
+SESSION_SECRET=${randomBytes(36).toString("base64url")}
+`,
+  );
+  accessNote = `\nAccess code for local development: ${code} (in .env.local)\n`;
 }
 
 // The app is whole without git, so git only ever earns a note. Inside
@@ -96,7 +186,7 @@ const cdArg = /^[\w./-]+$/.test(cdSafe)
   : `'${cdSafe.replaceAll("'", "'\\''")}'`;
 console.log(`
 ✓ Created ${name}
-${gitNote}
+${gitNote}${accessNote}
 Next:
 ${cdPath ? `\n  cd ${cdArg}` : ""}
   bun run dev      http://localhost:3000
