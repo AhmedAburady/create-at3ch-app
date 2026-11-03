@@ -11,7 +11,7 @@ Run it without a name and it asks for one. You get a TanStack Start app on Bun w
 - Tailwind v4 and shadcn on BaseUI (`base-luma`)
 - TanStack Query and the React Compiler (native, through Oxc)
 - Light, dark and system theme with no flash on load
-- A small Bun production server (`server.ts`), HTTP tests against the production build, and a multi-stage `oven/bun:1.4-slim` Dockerfile that ships no `node_modules`
+- A small Bun production server (`server.ts`), HTTP tests against the production build, and a multi-stage `oven/bun:1.4.4-slim` Dockerfile that ships no `node_modules`
 - `just` recipes: `dev`, `check`, `fix`, `test`, `build`, `start`, `update`, `docker load`, `docker push`
 
 Release: `just release patch|minor|major`.
