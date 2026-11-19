@@ -2,11 +2,11 @@
   "description": "One shared access code in front of the whole app",
   "remove": ["src/routes/index.tsx"],
   "dependencies": {
-    "iron-session": "9.0.1",
+    "iron-session": "9.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tanstack/router-core": "1.171.39",
-    "seroval": "^1.6.7"
+    "seroval": "^1.8.2"
   }
 }
