@@ -30,5 +30,7 @@ The variant is `variants/protected/`: `files/` is copied over the template, each
 
 ## Maintaining
 
-- `just test-variants`: generate every variant into a temporary folder and run `check`, `test` and `build` on each. Run it before every release.
+- `just test-variants`: generate every variant into a temporary folder and run `check`, `test` and `build` on each (with `--no-scan`, so it needs no Docker). Run it before every release.
+- Outdated template packages: `bun outdated` needs an install, so run it on a copy: `tmp=$(mktemp -d) && cp template/package.json "$tmp" && (cd "$tmp" && bun install --ignore-scripts >/dev/null && bun outdated)`. Bump `vite`, `vite-plus` and the `overrides` together, and the protected variant's packages in `variants/protected/variant.json`.
+- Trivy: the version the scan uses is pinned once, as `trivy` in `template/docker.just`.
 - `just release patch|minor|major`: bump, publish and push.
