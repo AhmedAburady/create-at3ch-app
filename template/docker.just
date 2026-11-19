@@ -1,6 +1,8 @@
 # The registry path, e.g. registry.example.com/team/__APP_NAME__ (or IMAGE=…).
 image := env("IMAGE", "__APP_NAME__")
 tag := env("TAG", "latest")
+# create-at3ch-app reads this line for its scan when it makes the app.
+trivy := "aquasec/trivy:0.76.2"
 
 # List the docker recipes.
 default:
@@ -17,3 +19,10 @@ load:
 [linux]
 load:
     docker build -t {{ image }}:{{ tag }} . --load
+
+# Covers dev packages too. Extra args go to trivy, e.g.
+# just docker scan --severity HIGH,CRITICAL
+
+# Scan packages, Dockerfile and files with Trivy: CVEs, misconfigs, secrets
+scan *args:
+    docker run --rm -v {{ quote(justfile_directory()) }}:/src:ro -v trivy-cache:/root/.cache/trivy {{ trivy }} fs --quiet --scanners vuln,misconfig,secret --include-dev-deps {{ args }} /src

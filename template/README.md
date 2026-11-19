@@ -9,6 +9,7 @@ just fix            # vp check --fix
 just test           # vp test: unit tests and the production build over HTTP
 just docker load    # build the image locally
 just docker push    # build for amd64 and push (IMAGE=registry/path)
+just docker scan    # Trivy: CVEs in packages, Dockerfile misconfigs, secrets
 ```
 
 Production is `bun run build`, then `bun run server.ts`: Bun serves `dist/client` and hands everything else to TanStack Start. The `Dockerfile` does the same on `oven/bun:1.4.4-slim`.

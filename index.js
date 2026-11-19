@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
-// bun create at3ch-app@latest [my-app] [--protected]
+// bun create at3ch-app@latest [my-app] [--protected] [--no-scan]
 // Copies the template, names it, installs it and starts a git repository
 // unless it is already inside one. --protected lays the protected variant
 // over the template: one shared access code in front of the whole app.
+// When Docker runs, Trivy scans the new app; --no-scan skips it.
 import { randomBytes } from "node:crypto";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import {
@@ -36,7 +37,8 @@ function slug(text) {
 
 const usage = `Give the app a name: bun create at3ch-app@latest my-app
 
-  --protected   put one shared access code in front of the whole app`;
+  --protected   put one shared access code in front of the whole app
+  --no-scan     skip the Trivy scan (runs only when Docker does)`;
 
 const argv = process.argv.slice(2);
 const flags = new Set(argv.filter((arg) => arg.startsWith("-")));
@@ -46,8 +48,10 @@ if (flags.has("--help") || flags.has("-h")) {
 }
 // A flag is not a name, and would otherwise become a folder called --help.
 for (const flag of flags)
-  if (flag !== "--protected") fail(`Unknown option ${flag}.\n\n${usage}`);
+  if (!["--protected", "--no-scan"].includes(flag))
+    fail(`Unknown option ${flag}.\n\n${usage}`);
 const variant = flags.has("--protected") ? "protected" : null;
+const scan = !flags.has("--no-scan");
 
 const target =
   argv.find((arg) => !arg.startsWith("-")) ??
@@ -177,6 +181,38 @@ if ((await git(["rev-parse", "--is-inside-work-tree"], "ignore")) === 0) {
   gitNote = "\n! git init did not run; the app works without it.\n";
 }
 
+// A first look by Trivy, in Docker: HIGH and CRITICAL CVEs in the packages
+// the app ships, Dockerfile mistakes and committed secrets. Only when Docker
+// is running, and a finding or failure never stops the app. The image is
+// the one docker.just pins, where just docker scan reruns it in full.
+let scanNote = "";
+if (scan && (await run(["docker", "info"], "ignore").catch(() => 1)) === 0) {
+  const recipes = await readFile(join(dest, "docker.just"), "utf8");
+  const image = recipes.match(/^trivy := "(.+)"$/m)?.[1];
+  console.log("\nScanning with Trivy (the first run downloads its database)");
+  const code = await run([
+    "docker",
+    "run",
+    "--rm",
+    "-v",
+    `${dest}:/src:ro`,
+    "-v",
+    "trivy-cache:/root/.cache/trivy",
+    image,
+    "fs",
+    "--quiet",
+    "--scanners",
+    "vuln,misconfig,secret",
+    "--severity",
+    "HIGH,CRITICAL",
+    "/src",
+  ]).catch(() => 1);
+  scanNote =
+    code === 0
+      ? "\njust docker scan reruns the scan with every severity.\n"
+      : "\n! The Trivy scan did not finish; just docker scan retries it.\n";
+}
+
 // Quoted for the shell when the path needs it, e.g. "My Cool App", and
 // led by ./ so bash does not read -dash as a flag.
 const cdPath = relative(process.cwd(), dest);
@@ -186,7 +222,7 @@ const cdArg = /^[\w./-]+$/.test(cdSafe)
   : `'${cdSafe.replaceAll("'", "'\\''")}'`;
 console.log(`
 ✓ Created ${name}
-${gitNote}${accessNote}
+${gitNote}${accessNote}${scanNote}
 Next:
 ${cdPath ? `\n  cd ${cdArg}` : ""}
   bun run dev      http://localhost:3000

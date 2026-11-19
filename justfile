@@ -11,7 +11,7 @@ test-variants:
     for variant in plain protected; do
         flag=$([ "$variant" = protected ] && echo --protected || true)
         echo "== $variant"
-        (cd "$dir" && bun "{{justfile_directory()}}/index.js" "$variant-app" $flag > /dev/null)
+        (cd "$dir" && bun "{{justfile_directory()}}/index.js" "$variant-app" $flag --no-scan > /dev/null)
         for step in check test build; do
             (cd "$dir/$variant-app" && bun run "$step")
         done

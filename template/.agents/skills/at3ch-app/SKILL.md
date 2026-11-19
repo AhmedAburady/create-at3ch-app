@@ -18,7 +18,7 @@ A TanStack Start app on Bun, scaffolded by `bun create at3ch-app@latest` (plain)
 | `src/server.ts` | Start's server entry, only when the app has one (the protected app does). |
 | `server.ts` | The production server: Bun serves `dist/client`, hands the rest to Start, and passes the connection's address as request context `clientIp`. |
 | `tests/` | `*.http.test.ts` run the production build over HTTP; `tests/env.ts` holds the settings they start it with. Unit tests sit next to the code as `src/**/*.test.ts`. |
-| `Dockerfile`, `docker.just` | Multi-stage `oven/bun` image that ships no `node_modules`. |
+| `Dockerfile`, `docker.just` | Multi-stage `oven/bun` image that ships no `node_modules`. `just docker scan` runs Trivy (pinned in `docker.just`) over the packages, Dockerfile and files. |
 
 ## Commands
 

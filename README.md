@@ -5,6 +5,8 @@ bun create at3ch-app@latest my-app               # the app
 bun create at3ch-app@latest my-app --protected   # the app behind an access code
 ```
 
+When Docker is running, it ends with a Trivy scan of the new app (HIGH and CRITICAL CVEs in its packages, Dockerfile misconfigurations, secrets); `--no-scan` skips it.
+
 Run it without a name and it asks for one. `--help` lists the options. You get a TanStack Start app on Bun with:
 
 - Vite+ (Vite 8, Oxlint, Oxfmt, Vitest): `vp check` formats, lints and typechecks in one pass
@@ -13,7 +15,7 @@ Run it without a name and it asks for one. `--help` lists the options. You get a
 - TanStack Query and the React Compiler (native, through Oxc)
 - Light, dark and system theme with no flash on load
 - A small Bun production server (`server.ts`), HTTP tests against the production build, and a multi-stage `oven/bun:1.4.4-slim` Dockerfile that ships no `node_modules`
-- `just` recipes: `dev`, `check`, `fix`, `test`, `build`, `start`, `update`, `docker load`, `docker push`
+- `just` recipes: `dev`, `check`, `fix`, `test`, `build`, `start`, `update`, `docker load`, `docker push`, `docker scan` (Trivy, in Docker)
 - For coding agents: `AGENTS.md` (with `CLAUDE.md` linked to it) and the `at3ch-app` skill in `.agents/skills` (linked from `.claude/skills`), which explains the scaffold and how to add the access code later
 
 ## Protected
